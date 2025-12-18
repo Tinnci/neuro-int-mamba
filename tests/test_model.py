@@ -16,7 +16,7 @@ def test_model_forward():
     g = torch.randn(1, 5, 32)
     
     motor_cmd, next_pred = model(p, t, v, g)
-    assert motor_cmd.shape == (1, 5, 54)
+    assert motor_cmd.shape == (1, 5, 27)
 
 def test_model_step():
     input_dims = {
@@ -33,6 +33,6 @@ def test_model_step():
     g_t = torch.randn(1, 32)
     
     motor_out, states, predictions = model.step(p_t, t_t, v_t, g_t)
-    assert motor_out.shape == (1, 54)
+    assert motor_out.shape == (1, 27)
     assert len(states) == 2
     assert len(predictions) == 2

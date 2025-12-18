@@ -118,13 +118,68 @@ class PredictiveCodingLayer(nn.Module):
         prediction = self.predictor(h)
         return h, new_state, prediction
 
+class TactileEncoder(nn.Module):
+    """
+    Tactile Encoder: Uses 1D Convolution as a spatial prior for array sensors.
+    Handles both batch (4D) and step (3D) inputs.
+    """
+    def __init__(self, input_dim, model_dim):
+        super().__init__()
+        self.input_dim = input_dim
+        self.conv = nn.Sequential(
+            nn.Conv1d(1, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Flatten(start_dim=-2),
+            nn.Linear(16 * input_dim, model_dim)
+        )
+
+    def forward(self, x):
+        # x shape: (B, L, D) or (B, D)
+        if x.dim() == 3:
+            B, L, D = x.shape
+            x_reshaped = x.view(B * L, 1, D)
+            h = self.conv(x_reshaped)
+            return h.view(B, L, -1)
+        else:
+            # x shape: (B, D)
+            x_reshaped = x.unsqueeze(1) # (B, 1, D)
+            return self.conv(x_reshaped)
+
+class VisualEncoder(nn.Module):
+    """
+    Visual Encoder: Optimized for high-resolution features.
+    Uses a multi-layer perceptron with LayerNorm for stability.
+    """
+    def __init__(self, input_dim, model_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, model_dim * 2),
+            nn.LayerNorm(model_dim * 2),
+            nn.GELU(),
+            nn.Linear(model_dim * 2, model_dim),
+            nn.LayerNorm(model_dim)
+        )
+        
+    def forward(self, x):
+        return self.net(x)
+
 class SpinalReflex(nn.Module):
     """
     Spinal Reflex Layer: Simulates low-level, fast feedback loops.
+    Implements PD (Proportional-Derivative) control to mimic muscle spindle sensitivity
+    to both muscle length (position) and rate of change (velocity).
     """
-    def __init__(self, proprio_dim):
+    def __init__(self, num_dof):
         super().__init__()
-        self.reflex_gain = nn.Parameter(torch.ones(proprio_dim) * 0.1)
+        # Kp: Proportional gain (Position)
+        self.kp = nn.Parameter(torch.ones(num_dof) * 0.1)
+        # Kd: Derivative gain (Velocity)
+        self.kd = nn.Parameter(torch.ones(num_dof) * 0.01)
         
-    def forward(self, proprio):
-        return -self.reflex_gain * proprio
+    def forward(self, pos, vel):
+        """
+        pos: (B, L, num_dof) or (B, num_dof)
+        vel: (B, L, num_dof) or (B, num_dof)
+        """
+        # Simple PD control: Output = -(Kp * pos + Kd * vel)
+        return -(self.kp * pos + self.kd * vel)

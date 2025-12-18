@@ -19,7 +19,7 @@ def main():
     g = torch.randn(1, 10, 32)
     
     motor_cmd, next_pred = model(p, t, v, g)
-    print(f"Batch Motor Command Shape: {motor_cmd.shape}")
+    print(f"Batch Motor Command Shape: {motor_cmd.shape}") # Should be (1, 10, 27)
     
     # Real-time step example
     p_t = torch.randn(1, 54)
@@ -28,6 +28,7 @@ def main():
     g_t = torch.randn(1, 32)
     
     motor_out, states, predictions = model.step(p_t, t_t, v_t, g_t)
+    print(f"Single Step Motor Output Shape: {motor_out.shape}") # Should be (1, 27)
     print(f"Single Step Motor Output Norm: {motor_out.norm().item():.4f}")
 
 if __name__ == "__main__":

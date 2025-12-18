@@ -17,7 +17,9 @@ The current version initializes with random weights for structural demonstration
 - **Dual-Stream INT**: Parallel fast (sensory) and slow (cognitive) streams.
 - **Predictive Coding**: Efference copy loop for error-driven learning.
 - **Chandelier Gating**: Inhibitory control inspired by Chandelier cells.
-- **Spinal Reflex**: Low-level feedback for immediate response.
+- **Spinal Reflex**: Low-level PD (Proportional-Derivative) feedback for immediate response.
+- **Tactile Spatial Prior**: 1D Convolutional encoder for array-based tactile sensors.
+- **High-Res Vision Support**: Optimized Thalamic Encoder for high-dimensional visual features.
 - **Real-time I/O**: $O(1)$ inference step for closed-loop control.
 
 ## Installation

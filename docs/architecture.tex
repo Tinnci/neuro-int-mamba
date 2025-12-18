@@ -41,10 +41,19 @@ Mimics the inhibitory control of Chandelier cells (ChCs) on pyramidal neurons:
 This mechanism prevents neural "over-firing" and ensures stability during high-intensity sensory input.
 
 \subsection{Spinal Reflex Loop}
-A low-level, fast feedback loop that operates in parallel with cortical processing. It provides immediate proportional-derivative-like corrections to maintain physical stability without requiring high-level cognitive overhead.
+A low-level, fast feedback loop that operates in parallel with cortical processing. It implements a Proportional-Derivative (PD) control logic:
+\begin{equation}
+    u_{reflex} = -(K_p \cdot \theta + K_d \cdot \dot{\theta})
+\end{equation}
+where $\theta$ and $\dot{\theta}$ represent joint positions and velocities. This mimics muscle spindle sensitivity, providing immediate corrections to maintain physical stability without requiring high-level cognitive overhead.
 
 \subsection{Thalamic Multi-modal Fusion}
-The Thalamic Encoder acts as a gateway, projecting diverse sensory modalities (proprioception, tactile, vision) into a unified latent space, enabling coherent cross-modal integration.
+The Thalamic Encoder acts as a gateway, projecting diverse sensory modalities into a unified latent space:
+\begin{itemize}
+    \item \textbf{Tactile Spatial Prior}: Uses 1D Convolutional layers to capture spatial correlations in array-based tactile sensors (e.g., GelSight or BioTac).
+    \item \textbf{High-Res Vision}: Optimized projection layers with LayerNorm for stable integration of high-dimensional visual features.
+\end{itemize}
+This enables coherent cross-modal integration before cortical processing.
 
 \section{Real-time Simultaneous I/O}
 Unlike traditional Transformers that suffer from $O(L^2)$ or $O(L)$ inference latency, Neuro-INT Mamba leverages the recurrent form of SSMs to achieve $O(1)$ per-step inference, allowing for seamless input-output coupling in closed-loop robotic control.
