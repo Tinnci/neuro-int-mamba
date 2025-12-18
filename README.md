@@ -59,6 +59,21 @@ uv run ty check .
 uv run pytest
 ```
 
+## Publishing to PyPI
+
+This project is configured to be built with `hatchling` and published via `uv`.
+
+1. **Build the package**:
+   ```bash
+   uv build
+   ```
+
+2. **Publish to PyPI**:
+   ```bash
+   # Use __token__ as username and your PyPI API token as password
+   uv publish
+   ```
+
 ## License
 
 MIT
