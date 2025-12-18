@@ -20,7 +20,8 @@ class GestureEMGDataset(Dataset):
         # Find all subject folders
         subject_folders = glob.glob(os.path.join(data_dir, "EMG_data_for_gestures-master", "*"))
         for folder in subject_folders:
-            if not os.path.isdir(folder): continue
+            if not os.path.isdir(folder):
+                continue
             txt_files = glob.glob(os.path.join(folder, "*.txt"))
             for f in txt_files:
                 df = pd.read_csv(f, sep='\t')
