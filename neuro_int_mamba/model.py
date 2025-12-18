@@ -1,60 +1,79 @@
+from typing import Optional, List, TYPE_CHECKING, cast, Any
 import torch
 import torch.nn as nn
 from .nn import SpinalReflex, PredictiveCodingLayer, TactileEncoder, VisualEncoder, EMGEncoder, SynergyBottleneck, SubjectAdapter
+
+if TYPE_CHECKING:
+    from torch import Tensor
 
 class NeuroINTMamba(nn.Module):
     """
     Full Neuro-INT Mamba Architecture.
     """
-    def __init__(self, input_dims, model_dim, num_layers, use_emg=False):
+    if TYPE_CHECKING:
+        use_emg: bool
+        num_dof: int
+        d_model: int
+        num_layers: int
+        states: Optional[List[Any]]
+        predictions: Optional[List[Optional[Tensor]]]
+
+    def __init__(
+        self,
+        vision_dim: int = 128,
+        tactile_dim: int = 16,
+        emg_dim: int = 8,
+        action_dim: int = 2,
+        d_model: int = 128,
+        num_layers: int = 4,
+        use_emg: bool = False,
+    ):
         super().__init__()
-        self.use_emg = use_emg
+        self.use_emg: bool = use_emg
+        self.num_dof: int = action_dim
+        self.d_model: int = d_model
+        self.num_layers: int = num_layers
+        
         # 1. Spinal Reflex: Low-level PD feedback
-        # Assuming proprio input is [pos, vel], so num_dof is half of proprio_dim
-        self.num_dof = input_dims['proprio'] // 2
+        # Proprioception is assumed to be [pos, vel] for each DOF
         self.spinal_reflex = SpinalReflex(self.num_dof)
         
         # 2. Thalamic Encoder: Multi-modal fusion
-        self.proprio_proj = nn.Linear(input_dims['proprio'], model_dim)
-        
-        # Tactile Encoder: Using a 1D Conv as a spatial prior for array sensors
-        self.tactile_conv = TactileEncoder(input_dims['tactile'], model_dim)
-        
-        self.visual_proj = VisualEncoder(input_dims['visual'], model_dim)
-        self.goal_proj = nn.Linear(input_dims['goal'], model_dim)
+        self.proprio_proj = nn.Linear(self.num_dof * 2, d_model)
+        self.tactile_conv = TactileEncoder(tactile_dim, d_model)
+        self.visual_proj = VisualEncoder(d_model)
         
         # Optional EMG Encoder for Transfer Learning
         if self.use_emg:
-            self.emg_encoder = EMGEncoder(input_dims['emg'], model_dim)
-            self.synergy_bottleneck = SynergyBottleneck(model_dim, num_synergies=8)
-            # Subject Adapters for multi-user fine-tuning
+            self.emg_encoder = EMGEncoder(emg_dim, d_model)
+            self.synergy_bottleneck = SynergyBottleneck(d_model, num_synergies=8)
             self.subject_adapters = nn.ModuleDict()
-            self.fusion = nn.Linear(model_dim * 5, model_dim)
+            self.fusion = nn.Linear(d_model * 4, d_model)
         else:
-            self.fusion = nn.Linear(model_dim * 4, model_dim)
+            self.fusion = nn.Linear(d_model * 3, d_model)
         
         # 3. Layers with Predictive Coding (Cerebral Cortex simulation)
         self.layers = nn.ModuleList([
-            PredictiveCodingLayer(model_dim) for _ in range(num_layers)
+            PredictiveCodingLayer(d_model) for _ in range(num_layers)
         ])
         
-        # 4. Output head: Motor commands (Target positions/torques for DOFs)
-        self.motor_head = nn.Linear(model_dim, self.num_dof)
+        # 4. Output head: Motor commands
+        self.motor_head = nn.Linear(d_model, self.num_dof)
         
-    def forward(self, proprio, tactile, visual, goal, emg=None, subject_id=None):
+        # State management for step()
+        self.states: Optional[List[Any]] = None
+        self.predictions: Optional[List[Optional[Tensor]]] = None
+
+    def forward(self, proprio, tactile, visual, emg=None, subject_id=None):
         # Split proprioception into position and velocity
         pos, vel = torch.split(proprio, self.num_dof, dim=-1)
         
         # 1. Low-level Reflex (PD Control)
-        # If EMG is provided, use its intensity to modulate reflex gains
         gain_mod = None
         if self.use_emg and emg is not None:
             e_feat = self.emg_encoder(emg)
-            
-            # Apply subject-specific adapter if provided
             if subject_id is not None and subject_id in self.subject_adapters:
                 e_feat = self.subject_adapters[subject_id](e_feat)
-                
             _, synergy = self.synergy_bottleneck(e_feat)
             gain_mod = torch.mean(synergy, dim=-1, keepdim=True)
             
@@ -64,44 +83,46 @@ class NeuroINTMamba(nn.Module):
         p = self.proprio_proj(proprio)
         t = self.tactile_conv(tactile)
         v = self.visual_proj(visual)
-        g = self.goal_proj(goal)
         
         if self.use_emg and emg is not None:
             e = self.emg_encoder(emg)
             if subject_id is not None and subject_id in self.subject_adapters:
                 e = self.subject_adapters[subject_id](e)
-            x = self.fusion(torch.cat([p, t, v, g, e], dim=-1))
+            x = self.fusion(torch.cat([p, t, v, e], dim=-1))
         else:
-            x = self.fusion(torch.cat([p, t, v, g], dim=-1))
+            x = self.fusion(torch.cat([p, t, v], dim=-1))
         
         # 3. Sequential Processing with Feedback (Predictive Coding)
         current_input = x
         prediction = None
         
-        # Use EMG as an intent prior for the first layer if available
         intent_prior = None
         if self.use_emg and emg is not None:
             intent_prior = self.emg_encoder(emg)
             if subject_id is not None and subject_id in self.subject_adapters:
                 intent_prior = self.subject_adapters[subject_id](intent_prior)
             
-        for i, layer in enumerate(self.layers):
-            # Only the first layer or all layers can receive the intent prior
-            # Here we pass it to all layers to maintain the 'intent' throughout the hierarchy
+        for layer in self.layers:
+            if TYPE_CHECKING:
+                assert isinstance(layer, PredictiveCodingLayer)
             current_input, prediction = layer(current_input, prediction, intent_prior=intent_prior)
             
-        # 4. Motor Output (Cortical command + Spinal reflex)
+        # 4. Motor Output
         cortical_cmd = self.motor_head(current_input)
         motor_cmd = cortical_cmd + reflex_cmd
         return motor_cmd, prediction
 
-    def step(self, proprio, tactile, visual, goal, emg=None, subject_id=None, states=None, predictions=None):
-        if states is None:
-            states = [None] * len(self.layers)
-        if predictions is None:
-            predictions = [None] * len(self.layers)
+    def step(self, visual, tactile, emg=None, proprio=None, subject_id=None):
+        """
+        Real-time O(1) inference step.
+        """
+        if self.states is None:
+            self.reset_states()
             
-        # Split proprioception
+        # If proprio is not provided, assume zero (or use last state if available)
+        if proprio is None:
+            proprio = torch.zeros(1, self.num_dof * 2, device=visual.device)
+            
         pos, vel = torch.split(proprio, self.num_dof, dim=-1)
         
         # 1. Low-level Reflex
@@ -119,20 +140,19 @@ class NeuroINTMamba(nn.Module):
         p = self.proprio_proj(proprio)
         t = self.tactile_conv(tactile)
         v = self.visual_proj(visual)
-        g = self.goal_proj(goal)
         
         if self.use_emg and emg is not None:
             e = self.emg_encoder(emg)
             if subject_id is not None and subject_id in self.subject_adapters:
                 e = self.subject_adapters[subject_id](e)
-            x = self.fusion(torch.cat([p, t, v, g, e], dim=-1))
+            x = self.fusion(torch.cat([p, t, v, e], dim=-1))
         else:
-            x = self.fusion(torch.cat([p, t, v, g], dim=-1))
+            x = self.fusion(torch.cat([p, t, v], dim=-1))
         
         # 3. Cortical Processing (Predictive Coding)
         current_input = x
-        new_states = []
-        new_predictions = []
+        new_states: List[Any] = []
+        new_predictions: List[Optional[Tensor]] = []
         
         intent_prior = None
         if self.use_emg and emg is not None:
@@ -140,16 +160,25 @@ class NeuroINTMamba(nn.Module):
             if subject_id is not None and subject_id in self.subject_adapters:
                 intent_prior = self.subject_adapters[subject_id](intent_prior)
             
+        # Ensure states are initialized
+        states = self.states if self.states is not None else [None] * len(self.layers)
+        preds = self.predictions if self.predictions is not None else [cast(Optional[Tensor], None)] * len(self.layers)
+
         for i, layer in enumerate(self.layers):
-            h, s, pred = layer.step(current_input, states[i], predictions[i], intent_prior=intent_prior)
+            if TYPE_CHECKING:
+                assert isinstance(layer, PredictiveCodingLayer)
+            h, s, pred = layer.step(current_input, states[i], preds[i], intent_prior=intent_prior)
             current_input = h
             new_states.append(s)
             new_predictions.append(pred)
             
+        self.states: Optional[List[Any]] = new_states
+        self.predictions: Optional[List[Optional[Tensor]]] = new_predictions
+        
         # 4. Motor Output
         cortical_cmd = self.motor_head(current_input)
         motor_cmd = cortical_cmd + reflex_cmd
-        return motor_cmd, new_states, new_predictions
+        return motor_cmd, new_predictions[-1]
 
     def add_subject_adapter(self, subject_id, bottleneck_dim=64):
         """
@@ -158,14 +187,9 @@ class NeuroINTMamba(nn.Module):
         model_dim = self.proprio_proj.out_features
         self.subject_adapters[subject_id] = SubjectAdapter(model_dim, bottleneck_dim)
 
-    def reset_states(self, batch_size=1, device=None):
+    def reset_states(self):
         """
-        Returns initial states and predictions for the model.
-        If device is None, it uses the device of the model parameters.
+        Resets the internal states for real-time inference.
         """
-        if device is None:
-            device = next(self.parameters()).device
-            
-        states = [None] * len(self.layers)
-        predictions = [None] * len(self.layers)
-        return states, predictions
+        self.states: Optional[List[Any]] = [None] * len(self.layers)
+        self.predictions: Optional[List[Optional[Tensor]]] = [cast(Optional[Tensor], None)] * len(self.layers)

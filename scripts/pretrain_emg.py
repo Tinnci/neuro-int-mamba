@@ -10,14 +10,15 @@ def masked_emg_pretraining():
     The model learns to reconstruct masked parts of the EMG signal,
     forcing it to learn underlying muscle synergy patterns.
     """
-    input_dims = {
-        'proprio': 54,
-        'tactile': 100,
-        'visual': 256,
-        'goal': 32,
-        'emg': 8
-    }
-    model = NeuroINTMamba(input_dims, model_dim=128, num_layers=2, use_emg=True)
+    model = NeuroINTMamba(
+        vision_dim=128, 
+        tactile_dim=16, 
+        emg_dim=8, 
+        action_dim=2, 
+        d_model=128, 
+        num_layers=2, 
+        use_emg=True
+    )
     
     # Reconstruction head for MEM
     reconstruction_head = nn.Linear(128, 8)

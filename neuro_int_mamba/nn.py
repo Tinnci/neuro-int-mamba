@@ -48,9 +48,8 @@ class SimpleMambaBlock(nn.Module):
         self.D = nn.Parameter(torch.ones(dim))
         
     def forward(self, x, dt_scale=1.0):
-        batch, seq_len, dim = x.shape
         projected = self.x_proj(x)
-        dt, B, C = torch.split(projected, [self.dt_rank, self.d_state, self.d_state], dim=-1)
+        dt, _, _ = torch.split(projected, [self.dt_rank, self.d_state, self.d_state], dim=-1)
         dt = self.dt_proj(dt) * dt_scale
         dt = F.softplus(dt)
         A = -torch.exp(self.A_log)
@@ -178,20 +177,32 @@ class TactileEncoder(nn.Module):
 class VisualEncoder(nn.Module):
     """
     Visual Encoder: Optimized for high-resolution features.
-    Uses a multi-layer perceptron with LayerNorm for stability.
+    Uses a simple CNN to process image inputs.
     """
-    def __init__(self, input_dim, model_dim):
+    def __init__(self, model_dim):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, model_dim * 2),
-            nn.LayerNorm(model_dim * 2),
-            nn.GELU(),
-            nn.Linear(model_dim * 2, model_dim),
+        self.conv = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1), # 64x64
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1), # 32x32
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1), # 16x16
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((4, 4)), # 4x4
+            nn.Flatten(),
+            nn.Linear(64 * 4 * 4, model_dim),
             nn.LayerNorm(model_dim)
         )
         
     def forward(self, x):
-        return self.net(x)
+        # x shape: (B, C, H, W) or (B, L, C, H, W)
+        if x.dim() == 5:
+            B, L, C, H, W = x.shape
+            x_reshaped = x.view(B * L, C, H, W)
+            h = self.conv(x_reshaped)
+            return h.view(B, L, -1)
+        else:
+            return self.conv(x)
 
 class SubjectAdapter(nn.Module):
     """

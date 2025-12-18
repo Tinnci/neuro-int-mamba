@@ -1,27 +1,50 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
+from scipy.signal import butter, sosfilt
 
 class NinaProDataset(Dataset):
     """
-    Skeleton for NinaPro (DB2/DB5) Dataset loading.
-    In a real scenario, this would load .mat files using scipy.io.
+    NinaPro (DB2/DB5) Dataset loading with preprocessing.
     """
-    def __init__(self, file_paths, window_size=200, stride=50):
+    def __init__(self, file_paths, window_size=200, stride=50, fs=2000):
         self.window_size = window_size
         self.stride = stride
+        self.fs = fs
         # Placeholder for loaded data
         self.data = [] 
         self.labels = []
+        # Pre-calculate filter coefficients for optimization
+        self.sos = self._create_filter(20, 500)
         
+    def _create_filter(self, lowcut, highcut, order=4):
+        nyq = 0.5 * self.fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        # Use SOS (Second-Order Sections) for better numerical stability
+        return butter(order, [low, high], btype='bandpass', output='sos')
+
     def _preprocess(self, raw_emg):
         """
-        Apply filtering and rectification.
+        Apply Butterworth band-pass filtering and rectification.
         """
-        # 1. Rectification
-        rectified = np.abs(raw_emg)
-        # 2. Low-pass filter (Envelope) - simplified as moving average
+        # 1. Band-pass filter (20-500Hz) using pre-calculated SOS
+        filtered = sosfilt(self.sos, raw_emg, axis=0)
+        
+        # 2. Rectification
+        rectified = np.abs(filtered)
+        
+        # 3. Feature Extraction (RMS/MAV)
+        # In a real scenario, this would be done per window
         return rectified 
+
+    def extract_features(self, window):
+        """
+        Extract RMS and MAV features from a window.
+        """
+        rms = np.sqrt(np.mean(window**2, axis=0))
+        mav = np.mean(np.abs(window), axis=0)
+        return np.concatenate([rms, mav])
 
     def __len__(self) -> int:
         return len(self.data)

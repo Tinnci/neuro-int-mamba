@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from neuro_int_mamba import NeuroINTMamba
@@ -26,19 +25,20 @@ def train_emg_alignment():
     using InfoNCE (Contrastive Learning).
     """
     # 1. Setup Model
-    input_dims = {
-        'proprio': 54,
-        'tactile': 100,
-        'visual': 256,
-        'goal': 32,
-        'emg': 8
-    }
-    model = NeuroINTMamba(input_dims, model_dim=128, num_layers=2, use_emg=True)
+    model = NeuroINTMamba(
+        vision_dim=128, 
+        tactile_dim=16, 
+        emg_dim=8, 
+        action_dim=2, 
+        d_model=128, 
+        num_layers=2, 
+        use_emg=True
+    )
     
     # 2. Simulated Data
     batch_size = 32
     human_emg = torch.randn(batch_size, 8) # Single time step for simplicity
-    robot_proprio = torch.randn(batch_size, 54)
+    robot_proprio = torch.randn(batch_size, 4) # 2 DOF * 2
     
     # 3. Alignment Objective
     optimizer = optim.Adam(model.parameters(), lr=1e-4)

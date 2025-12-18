@@ -1,0 +1,43 @@
+{
+    "stubPath": "typings",
+    "typeCheckingMode": "basic",
+    "reportMissingTypeStubs": false,
+    "reportGeneralTypeIssues": true,
+    "reportPropertyTypeMismatch": true,
+    "reportUnusedImport": true,
+    "reportUnusedVariable": true,
+    "reportDuplicateImport": true,
+    "reportInconsistentConstructor": true,
+    "reportOverlappingOverload": true,
+    "reportMissingParameterType": false,
+    "reportUnknownParameterType": false,
+    "reportUnknownVariableType": false,
+    "reportUnknownMemberType": false,
+    "reportUnknownArgumentType": false,
+    "reportUnknownLambdaType": false,
+    "reportUnknownReturnType": false,
+    "reportUnnecessaryIsInstance": true,
+    "reportUnnecessaryCast": true,
+    "reportUnnecessaryComparison": true,
+    "reportUnnecessaryContains": true,
+    "reportAssertAlwaysTrue": true,
+    "reportSelfClsParameterName": true,
+    "reportImplicitStringConcatenation": false,
+    "reportUndefinedVariable": true,
+    "reportUnboundVariable": true,
+    "reportInvalidStubStatement": true,
+    "reportIncompletePositionals": true,
+    "reportInconsistentOverload": true,
+    "reportUnnecessaryTypeIgnoreComment": true,
+    "reportMatchNotExhaustive": true,
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        ".venv"
+    ],
+    "executionEnvironments": [
+        {
+            "root": "."
+        }
+    ]
+}
