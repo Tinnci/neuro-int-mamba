@@ -1,6 +1,16 @@
-# Neuro-INT Mamba
+# Neuro-INT Mamba (WIP)
+
+> **Note**: This project is currently a **Work in Progress (WIP)**. The core architecture is implemented, but pre-trained weights are not yet provided.
 
 A Bio-inspired Mamba Architecture for Dexterous Manipulation with Intrinsic Neural Timescales (INT).
+
+## Status: Work in Progress
+
+This repository provides the **architectural implementation** of Neuro-INT Mamba. To use this model for actual robotic tasks (e.g., dexterous grasping), it must be trained using:
+- **Reinforcement Learning (RL)** in environments like Isaac Gym or MuJoCo.
+- **Imitation Learning (IL)** from human demonstration datasets.
+
+The current version initializes with random weights for structural demonstration.
 
 ## Features
 
