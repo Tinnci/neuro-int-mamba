@@ -179,6 +179,43 @@ class VisualEncoder(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+class EMGEncoder(nn.Module):
+    """
+    EMG Encoder: Processes surface Electromyography signals.
+    Uses a 1D Conv to capture temporal patterns in muscle activation envelopes.
+    """
+    def __init__(self, input_dim, model_dim):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv1d(1, 8, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Flatten(start_dim=-2),
+            nn.Linear(8 * input_dim, model_dim)
+        )
+        
+    def forward(self, x):
+        # x: (B, L, D) or (B, D)
+        if x.dim() == 3:
+            B, L, D = x.shape
+            x = x.view(B * L, 1, D)
+            return self.conv(x).view(B, L, -1)
+        else:
+            return self.conv(x.unsqueeze(1))
+
+class SynergyBottleneck(nn.Module):
+    """
+    Muscle Synergy Bottleneck: Implements dimensionality reduction to extract
+    low-dimensional control primitives (synergies) from high-dimensional intent.
+    """
+    def __init__(self, dim, num_synergies):
+        super().__init__()
+        self.encoder = nn.Linear(dim, num_synergies)
+        self.decoder = nn.Linear(num_synergies, dim)
+        
+    def forward(self, x):
+        synergy = torch.tanh(self.encoder(x))
+        return self.decoder(synergy), synergy
+
 class SpinalReflex(nn.Module):
     """
     Spinal Reflex Layer: Simulates low-level, fast feedback loops.
@@ -192,10 +229,17 @@ class SpinalReflex(nn.Module):
         # Kd: Derivative gain (Velocity)
         self.kd = nn.Parameter(torch.ones(num_dof) * 0.01)
         
-    def forward(self, pos, vel):
+    def forward(self, pos, vel, gain_mod=None):
         """
         pos: (B, L, num_dof) or (B, num_dof)
         vel: (B, L, num_dof) or (B, num_dof)
+        gain_mod: Optional modulation signal from higher centers (e.g., EMG intent)
         """
-        # Simple PD control: Output = -(Kp * pos + Kd * vel)
-        return -(self.kp * pos + self.kd * vel)
+        kp = self.kp
+        kd = self.kd
+        if gain_mod is not None:
+            # gain_mod: (B, L, 1) or (B, 1)
+            kp = kp * (1.0 + gain_mod)
+            kd = kd * (1.0 + gain_mod)
+            
+        return -(kp * pos + kd * vel)
