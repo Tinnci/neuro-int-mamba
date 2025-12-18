@@ -30,7 +30,8 @@ The architecture implements parallel processing streams with different discretiz
 Inspired by the brain's ability to predict sensory consequences of motor commands:
 \begin{itemize}
     \item Each layer generates a prediction of the next state.
-    \item The network processes the \textit{prediction error} ($x_{actual} - x_{predicted}$), significantly reducing redundancy and focusing on unexpected perturbations.
+    \item The network processes the \textit{prediction error} ($x_{actual} - x_{predicted}$), significantly reducing redundancy.
+    \item \textbf{Intent Prior}: High-level intent (e.g., from EMG) acts as a prior to bias the prediction, enabling faster error correction during unexpected perturbations.
 \end{itemize}
 
 \subsection{Chandelier Gating Mechanism}
@@ -45,13 +46,15 @@ A low-level, fast feedback loop that operates in parallel with cortical processi
 \begin{equation}
     u_{reflex} = -(K_p \cdot \theta + K_d \cdot \dot{\theta})
 \end{equation}
-where $\theta$ and $\dot{\theta}$ represent joint positions and velocities. This mimics muscle spindle sensitivity, providing immediate corrections to maintain physical stability without requiring high-level cognitive overhead.
+where $\theta$ and $\dot{\theta}$ represent joint positions and velocities. This mimics muscle spindle sensitivity. The gains $K_p$ and $K_d$ can be dynamically modulated by higher-level intent (e.g., EMG intensity) to adjust joint stiffness during contact.
 
 \subsection{Thalamic Multi-modal Fusion}
 The Thalamic Encoder acts as a gateway, projecting diverse sensory modalities into a unified latent space:
 \begin{itemize}
-    \item \textbf{Tactile Spatial Prior}: Uses 1D Convolutional layers to capture spatial correlations in array-based tactile sensors (e.g., GelSight or BioTac).
+    \item \textbf{Tactile Spatial Prior}: Uses 1D Convolutional layers to capture spatial correlations in array-based tactile sensors.
     \item \textbf{High-Res Vision}: Optimized projection layers with LayerNorm for stable integration of high-dimensional visual features.
+    \item \textbf{EMG Transfer Learning}: Integrates surface Electromyography (sEMG) signals to capture human motor intent.
+    \item \textbf{Muscle Synergy Bottleneck}: Extracts low-dimensional control primitives (synergies) from high-dimensional intent, enabling human-like coordination.
 \end{itemize}
 This enables coherent cross-modal integration before cortical processing.
 
