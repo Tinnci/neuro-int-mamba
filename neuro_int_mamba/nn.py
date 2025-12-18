@@ -193,6 +193,23 @@ class VisualEncoder(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+class SubjectAdapter(nn.Module):
+    """
+    Subject-Specific Adapter: A bottleneck module to handle inter-subject variability.
+    Used for fine-tuning the model for a specific user without retraining the backbone.
+    """
+    def __init__(self, dim, bottleneck_dim=64):
+        super().__init__()
+        self.adapter = nn.Sequential(
+            nn.Linear(dim, bottleneck_dim),
+            nn.GELU(),
+            nn.Linear(bottleneck_dim, dim)
+        )
+        
+    def forward(self, x):
+        # Residual connection: original + adapted
+        return x + self.adapter(x)
+
 class EMGEncoder(nn.Module):
     """
     EMG Encoder: Processes surface Electromyography signals.
