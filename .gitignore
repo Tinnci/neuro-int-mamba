@@ -27,3 +27,10 @@ wheels/
 *.synctex.gz
 *.fdb_latexmk
 *.fls
+
+# Data and Large Files
+data/
+*.zip
+*.rar
+*.npy
+*.npz
