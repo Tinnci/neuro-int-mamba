@@ -23,12 +23,12 @@ class NinaProDataset(Dataset):
         # 2. Low-pass filter (Envelope) - simplified as moving average
         return rectified 
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, idx):
-        emg_window = self.data[idx]
-        label = self.labels[idx]
+    def __getitem__(self, index: int):
+        emg_window = self.data[index]
+        label = self.labels[index]
         return torch.tensor(emg_window, dtype=torch.float32), torch.tensor(label, dtype=torch.long)
 
 class DexRobotAlignmentDataset(Dataset):
@@ -40,13 +40,13 @@ class DexRobotAlignmentDataset(Dataset):
         self.emg_data = emg_data
         self.robot_states = robot_states
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.emg_data)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, index: int):
         return {
-            'emg': torch.tensor(self.emg_data[idx], dtype=torch.float32),
-            'proprio': torch.tensor(self.robot_states[idx], dtype=torch.float32)
+            'emg': torch.tensor(self.emg_data[index], dtype=torch.float32),
+            'proprio': torch.tensor(self.robot_states[index], dtype=torch.float32)
         }
 
 def get_dataloaders(batch_size=32):
