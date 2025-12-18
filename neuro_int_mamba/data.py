@@ -40,10 +40,10 @@ class GestureEMGDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, index):
         return {
-            'emg': torch.tensor(self.data[idx], dtype=torch.float32),
-            'label': torch.tensor(self.labels[idx], dtype=torch.long)
+            'emg': torch.tensor(self.data[index], dtype=torch.float32),
+            'label': torch.tensor(self.labels[index], dtype=torch.long)
         }
 
 class NinaProDataset(Dataset):
