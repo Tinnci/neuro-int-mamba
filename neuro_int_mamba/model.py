@@ -68,8 +68,16 @@ class NeuroINTMamba(nn.Module):
         # 3. Sequential Processing with Feedback (Predictive Coding)
         current_input = x
         prediction = None
-        for layer in self.layers:
-            current_input, prediction = layer(current_input, prediction)
+        
+        # Use EMG as an intent prior for the first layer if available
+        intent_prior = None
+        if self.use_emg and emg is not None:
+            intent_prior = self.emg_encoder(emg)
+            
+        for i, layer in enumerate(self.layers):
+            # Only the first layer or all layers can receive the intent prior
+            # Here we pass it to all layers to maintain the 'intent' throughout the hierarchy
+            current_input, prediction = layer(current_input, prediction, intent_prior=intent_prior)
             
         # 4. Motor Output (Cortical command + Spinal reflex)
         cortical_cmd = self.motor_head(current_input)
@@ -110,8 +118,13 @@ class NeuroINTMamba(nn.Module):
         current_input = x
         new_states = []
         new_predictions = []
+        
+        intent_prior = None
+        if self.use_emg and emg is not None:
+            intent_prior = self.emg_encoder(emg)
+            
         for i, layer in enumerate(self.layers):
-            h, s, pred = layer.step(current_input, states[i], predictions[i])
+            h, s, pred = layer.step(current_input, states[i], predictions[i], intent_prior=intent_prior)
             current_input = h
             new_states.append(s)
             new_predictions.append(pred)

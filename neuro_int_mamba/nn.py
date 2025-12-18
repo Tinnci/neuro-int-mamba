@@ -110,13 +110,23 @@ class DualStreamINTBlock(nn.Module):
 class PredictiveCodingLayer(nn.Module):
     """
     Predictive Coding Layer: Implements the Efference Copy Loop.
+    Now supports an optional 'intent_prior' (e.g., from EMG) to bias the prediction.
     """
     def __init__(self, dim):
         super().__init__()
         self.block = DualStreamINTBlock(dim)
         self.predictor = nn.Linear(dim, dim)
+        self.intent_gate = nn.Sequential(
+            nn.Linear(dim * 2, dim),
+            nn.Sigmoid()
+        )
         
-    def forward(self, x, prev_prediction=None):
+    def forward(self, x, prev_prediction=None, intent_prior=None):
+        # If intent_prior is provided, use it to bias the current state
+        if intent_prior is not None:
+            gate = self.intent_gate(torch.cat([x, intent_prior], dim=-1))
+            x = x * (1 - gate) + intent_prior * gate
+            
         if prev_prediction is not None:
             x_error = x - prev_prediction
             h = self.block(x_error)
@@ -125,7 +135,11 @@ class PredictiveCodingLayer(nn.Module):
         prediction = self.predictor(h)
         return h, prediction
 
-    def step(self, x, state=None, prev_prediction=None):
+    def step(self, x, state=None, prev_prediction=None, intent_prior=None):
+        if intent_prior is not None:
+            gate = self.intent_gate(torch.cat([x, intent_prior], dim=-1))
+            x = x * (1 - gate) + intent_prior * gate
+            
         if prev_prediction is not None:
             x_error = x - prev_prediction
             h, new_state = self.block.step(x_error, state)
