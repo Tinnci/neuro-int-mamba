@@ -1,10 +1,11 @@
 from typing import Optional, List, TYPE_CHECKING, cast, Any
 import torch
+from torch import Tensor
 import torch.nn as nn
 from .nn import SpinalReflex, PredictiveCodingLayer, TactileEncoder, VisualEncoder, EMGEncoder, SynergyBottleneck, SubjectAdapter
 
 if TYPE_CHECKING:
-    from torch import Tensor
+    from typing import Any
 
 class NeuroINTMamba(nn.Module):
     """
