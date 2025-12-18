@@ -1,0 +1,52 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Neuro-INT Mamba: Architectural Principles}
+\author{Neuro-INT Mamba Project}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+Neuro-INT Mamba is a bio-inspired architecture designed for dexterous manipulation. It integrates State Space Models (SSM) with key neurobiological principles to achieve real-time, adaptive, and multi-modal control.
+
+\section{Core Architectural Pillars}
+
+\subsection{Dual-Stream Intrinsic Neural Timescales (INT)}
+The architecture implements parallel processing streams with different discretization steps ($\Delta$):
+\begin{itemize}
+    \item \textbf{Fast Stream (Sensory)}: Small $\Delta$, simulating the Primary Sensory Cortex (S1/M1) for rapid response to high-frequency stimuli.
+    \item \textbf{Slow Stream (Cognitive)}: Large $\Delta$, simulating the Prefrontal Cortex for long-term integration and goal maintenance.
+\end{itemize}
+
+\subsection{Predictive Coding \& Efference Copy}
+Inspired by the brain's ability to predict sensory consequences of motor commands:
+\begin{itemize}
+    \item Each layer generates a prediction of the next state.
+    \item The network processes the \textit{prediction error} ($x_{actual} - x_{predicted}$), significantly reducing redundancy and focusing on unexpected perturbations.
+\end{itemize}
+
+\subsection{Chandelier Gating Mechanism}
+Mimics the inhibitory control of Chandelier cells (ChCs) on pyramidal neurons:
+\begin{equation}
+    Gate(x) = x \cdot \sigma(\alpha - \beta \cdot \|x\|^2)
+\end{equation}
+This mechanism prevents neural "over-firing" and ensures stability during high-intensity sensory input.
+
+\subsection{Spinal Reflex Loop}
+A low-level, fast feedback loop that operates in parallel with cortical processing. It provides immediate proportional-derivative-like corrections to maintain physical stability without requiring high-level cognitive overhead.
+
+\subsection{Thalamic Multi-modal Fusion}
+The Thalamic Encoder acts as a gateway, projecting diverse sensory modalities (proprioception, tactile, vision) into a unified latent space, enabling coherent cross-modal integration.
+
+\section{Real-time Simultaneous I/O}
+Unlike traditional Transformers that suffer from $O(L^2)$ or $O(L)$ inference latency, Neuro-INT Mamba leverages the recurrent form of SSMs to achieve $O(1)$ per-step inference, allowing for seamless input-output coupling in closed-loop robotic control.
+
+\end{document}
