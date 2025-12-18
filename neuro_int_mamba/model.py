@@ -92,3 +92,11 @@ class NeuroINTMamba(nn.Module):
         cortical_cmd = self.motor_head(current_input)
         motor_cmd = cortical_cmd + reflex_cmd
         return motor_cmd, new_states, new_predictions
+
+    def reset_states(self, batch_size=1, device='cpu'):
+        """
+        Returns initial states and predictions for the model.
+        """
+        states = [None] * len(self.layers)
+        predictions = [None] * len(self.layers)
+        return states, predictions

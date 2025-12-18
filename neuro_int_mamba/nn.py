@@ -58,12 +58,28 @@ class SimpleMambaBlock(nn.Module):
         return y
 
     def step(self, x, state=None, dt_scale=1.0):
+        # x: (B, D)
+        batch_size = x.shape[0]
+        if state is None:
+            state = torch.zeros(batch_size, self.dim, self.d_state, device=x.device)
+            
         projected = self.x_proj(x)
         dt, B, C = torch.split(projected, [self.dt_rank, self.d_state, self.d_state], dim=-1)
-        dt = self.dt_proj(dt) * dt_scale
-        dt = F.softplus(dt)
-        A = -torch.exp(self.A_log)
-        y = x * torch.exp(A.mean(dim=-1) * dt) + x * self.D
+        dt = F.softplus(self.dt_proj(dt) * dt_scale) # (B, D)
+        
+        A = -torch.exp(self.A_log) # (D, N)
+        
+        # Simplified SSM discretization
+        # dA = exp(dt * A)
+        # dB = dt * B
+        dA = torch.exp(dt.unsqueeze(-1) * A.unsqueeze(0)) # (B, D, N)
+        dB = dt.unsqueeze(-1) * B.unsqueeze(1) # (B, D, N)
+        
+        # Update state: h = dA * h + dB * x
+        state = dA * state + dB * x.unsqueeze(-1)
+        
+        # Output: y = C * h + D * x
+        y = torch.einsum("bdn,bn->bd", state, C) + x * self.D
         return y, state
 
 class DualStreamINTBlock(nn.Module):

@@ -36,3 +36,10 @@ def test_model_step():
     assert motor_out.shape == (1, 27)
     assert len(states) == 2
     assert len(predictions) == 2
+
+def test_model_reset():
+    input_dims = {'proprio': 54, 'tactile': 100, 'visual': 256, 'goal': 32}
+    model = NeuroINTMamba(input_dims, model_dim=128, num_layers=2)
+    states, preds = model.reset_states()
+    assert all(s is None for s in states)
+    assert all(p is None for p in preds)
