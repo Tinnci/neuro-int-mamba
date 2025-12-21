@@ -40,8 +40,14 @@ class NeuroINTMamba(nn.Module):
         self.spinal_reflex = SpinalReflex(self.num_dof)
         
         # 2. Thalamic Encoder: Multi-modal fusion
-        self.proprio_proj = nn.Linear(self.num_dof * 2, d_model)
-        self.tactile_conv = TactileEncoder(tactile_dim, d_model)
+        self.proprio_proj = nn.Sequential(
+            nn.Linear(self.num_dof * 2, d_model),
+            nn.LayerNorm(d_model)
+        )
+        self.tactile_conv = nn.Sequential(
+            TactileEncoder(tactile_dim, d_model),
+            nn.LayerNorm(d_model)
+        )
         self.visual_proj = VisualEncoder(d_model)
         
         # Optional EMG Encoder for Transfer Learning
@@ -59,11 +65,26 @@ class NeuroINTMamba(nn.Module):
         ])
         
         # 4. Output head: Motor commands
-        self.motor_head = nn.Linear(d_model, self.num_dof)
+        self.motor_head = nn.Sequential(
+            nn.Linear(d_model, self.num_dof),
+            nn.Tanh() # Strictly bound cortical commands to [-1, 1]
+        )
         
         # State management for step()
         self.states: Optional[List[Any]] = None
         self.predictions: Optional[List[Optional[Tensor]]] = None
+        
+        # Initialize all weights to be small for stability
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, (nn.Linear, nn.Conv1d, nn.Conv2d)):
+            nn.init.trunc_normal_(m.weight, std=0.02)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.ones_(m.weight)
+            nn.init.zeros_(m.bias)
 
     def forward(self, proprio, tactile, visual, emg=None, subject_id=None):
         # Split proprioception into position and velocity
@@ -115,14 +136,17 @@ class NeuroINTMamba(nn.Module):
 
     def step(self, visual, tactile, emg=None, proprio=None, subject_id=None):
         """
-        Real-time O(1) inference step.
+        Real-time O(1) inference step. Supports batching.
         """
         if self.states is None:
             self.reset_states()
             
-        # If proprio is not provided, assume zero (or use last state if available)
+        batch_size = visual.shape[0]
+        device = visual.device
+
+        # If proprio is not provided, assume zero
         if proprio is None:
-            proprio = torch.zeros(1, self.num_dof * 2, device=visual.device)
+            proprio = torch.zeros(batch_size, self.num_dof * 2, device=device)
             
         pos, vel = torch.split(proprio, self.num_dof, dim=-1)
         
@@ -185,12 +209,15 @@ class NeuroINTMamba(nn.Module):
         """
         Adds a new subject-specific adapter to the model.
         """
-        model_dim = self.proprio_proj.out_features
+        # Get d_model from the fusion layer or similar
+        model_dim = self.d_model
         self.subject_adapters[subject_id] = SubjectAdapter(model_dim, bottleneck_dim)
 
-    def reset_states(self):
+    def reset_states(self, batch_size=1, device=None):
         """
         Resets the internal states for real-time inference.
         """
-        self.states: Optional[List[Any]] = [None] * len(self.layers)
-        self.predictions: Optional[List[Optional[Tensor]]] = [cast(Optional[Tensor], None)] * len(self.layers)
+        # We keep them as None, the layers will initialize them on the first step
+        # based on the input batch size.
+        self.states = [None] * len(self.layers)
+        self.predictions = [None] * len(self.layers)

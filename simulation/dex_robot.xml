@@ -1,13 +1,13 @@
 <mujoco model="dex_robot_simple">
     <compiler angle="degree" coordinate="local" inertiafromgeom="true"/>
-    <option integrator="RK4" timestep="0.01"/>
+    <option integrator="RK4" timestep="0.002"/>
     
     <worldbody>
         <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
         <geom name="floor" pos="0 0 0" size="0 0 .25" type="plane" rgba="0.8 0.9 0.8 1"/>
         
-        <!-- Camera for Vision Input -->
-        <camera name="hand_cam" pos="0 -0.5 0.5" quat="0.707 0.707 0 0"/>
+        <!-- Camera for Vision Input - Automatically tracks the palm -->
+        <camera name="hand_cam" pos="0 -0.6 0.4" mode="targetbody" target="palm"/>
 
         <body name="base" pos="0 0 0.1">
             <geom name="base_geom" type="cylinder" size="0.05 0.1" rgba="0.5 0.5 0.5 1"/>
@@ -67,13 +67,13 @@
     </sensor>
 
     <actuator>
-        <motor name="motor1" joint="joint1" gear="100"/>
-        <motor name="motor2" joint="joint2" gear="100"/>
-        <motor name="f1_m1" joint="f1_j1" gear="10"/>
-        <motor name="f1_m2" joint="f1_j2" gear="10"/>
-        <motor name="f2_m1" joint="f2_j1" gear="10"/>
-        <motor name="f2_m2" joint="f2_j2" gear="10"/>
-        <motor name="f3_m1" joint="f3_j1" gear="10"/>
-        <motor name="f3_m2" joint="f3_j2" gear="10"/>
+        <motor name="motor1" joint="joint1" gear="50"/>
+        <motor name="motor2" joint="joint2" gear="50"/>
+        <motor name="f1_m1" joint="f1_j1" gear="5"/>
+        <motor name="f1_m2" joint="f1_j2" gear="5"/>
+        <motor name="f2_m1" joint="f2_j1" gear="5"/>
+        <motor name="f2_m2" joint="f2_j2" gear="5"/>
+        <motor name="f3_m1" joint="f3_j1" gear="5"/>
+        <motor name="f3_m2" joint="f3_j2" gear="5"/>
     </actuator>
 </mujoco>

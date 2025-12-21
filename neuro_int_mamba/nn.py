@@ -266,10 +266,10 @@ class SpinalReflex(nn.Module):
     """
     def __init__(self, num_dof):
         super().__init__()
-        # Kp: Proportional gain (Position)
-        self.kp = nn.Parameter(torch.ones(num_dof) * 0.1)
-        # Kd: Derivative gain (Velocity)
-        self.kd = nn.Parameter(torch.ones(num_dof) * 0.01)
+        # Kp: Proportional gain (Position) - Reduced for stability
+        self.kp = nn.Parameter(torch.ones(num_dof) * 0.01)
+        # Kd: Derivative gain (Velocity) - Reduced for stability
+        self.kd = nn.Parameter(torch.ones(num_dof) * 0.001)
         
     def forward(self, pos, vel, gain_mod=None):
         """
