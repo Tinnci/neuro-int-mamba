@@ -34,3 +34,6 @@ data/
 *.rar
 *.npy
 *.npz
+
+# MuJoCo logs
+MUJOCO_LOG.TXT

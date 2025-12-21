@@ -11,14 +11,18 @@ def run_simulation(use_real_data=True):
     # 1. Load MuJoCo model
     m = mujoco.MjModel.from_xml_path('simulation/dex_robot.xml')
     d = mujoco.MjData(m)
+    
+    # Initialize Renderer for Vision
+    renderer = mujoco.Renderer(m, height=128, width=128)
 
     # 2. Initialize Neuro-INT Mamba model
+    # Updated for 8-DOF (2 arm + 6 finger joints)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = NeuroINTMamba(
         vision_dim=128,
-        tactile_dim=16,
+        tactile_dim=3, # 3 touch sensors
         emg_dim=8,
-        action_dim=2,
+        action_dim=m.nu, # Automatically match actuator count (8)
         d_model=128,
         use_emg=True
     ).to(device)
@@ -38,15 +42,21 @@ def run_simulation(use_real_data=True):
             step_start = time.time()
 
             # --- Get Observations ---
+            # 1. Proprioception: [qpos, qvel]
             proprio_obs = torch.tensor(np.concatenate([d.qpos, d.qvel]), dtype=torch.float32).unsqueeze(0).to(device)
-            vision_obs = torch.randn(1, 3, 128, 128).to(device)
-            tactile_obs = torch.randn(1, 16).to(device)
             
-            # EMG: Real or Mock
+            # 2. Vision: Real rendering from hand_cam
+            renderer.update_scene(d, camera="hand_cam")
+            pixels = renderer.render() # (128, 128, 3)
+            vision_obs = torch.tensor(pixels, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device) / 255.0
+            
+            # 3. Tactile: Real touch sensor data
+            tactile_obs = torch.tensor(d.sensordata[:3], dtype=torch.float32).unsqueeze(0).to(device)
+            
+            # 4. EMG: Real or Mock
             if data_iter is not None:
                 try:
                     batch = next(data_iter)
-                    # batch['emg'] is (1, window_size, 8), we take the last step for real-time
                     emg_obs = batch['emg'][:, -1, :].to(device)
                 except StopIteration:
                     data_iter = iter(loader)
@@ -65,7 +75,7 @@ def run_simulation(use_real_data=True):
                 action = action.cpu().numpy().flatten()
 
             # --- Apply Actions ---
-            d.ctrl[:2] = action
+            d.ctrl[:] = action # Apply to all 8 actuators
             mujoco.mj_step(m, d)
             viewer.sync()
 

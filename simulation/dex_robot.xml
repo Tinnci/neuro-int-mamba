@@ -6,6 +6,9 @@
         <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
         <geom name="floor" pos="0 0 0" size="0 0 .25" type="plane" rgba="0.8 0.9 0.8 1"/>
         
+        <!-- Camera for Vision Input -->
+        <camera name="hand_cam" pos="0 -0.5 0.5" quat="0.707 0.707 0 0"/>
+
         <body name="base" pos="0 0 0.1">
             <geom name="base_geom" type="cylinder" size="0.05 0.1" rgba="0.5 0.5 0.5 1"/>
             <body name="arm_link1" pos="0 0 0.1">
@@ -14,17 +17,63 @@
                 <body name="arm_link2" pos="0 0 0.3">
                     <joint name="joint2" type="hinge" axis="0 1 0" range="-90 90"/>
                     <geom name="link2_geom" type="capsule" size="0.03" fromto="0 0 0 0 0 0.3" rgba="0.7 0.7 0.7 1"/>
-                    <body name="hand" pos="0 0 0.3">
-                        <site name="hand_site" pos="0 0 0" size="0.01"/>
-                        <geom name="hand_geom" type="sphere" size="0.04" rgba="0.1 0.1 0.8 1"/>
+                    
+                    <!-- Dexterous Hand Base (Palm) -->
+                    <body name="palm" pos="0 0 0.3">
+                        <geom name="palm_geom" type="box" size="0.05 0.02 0.05" rgba="0.1 0.1 0.8 1"/>
+                        
+                        <!-- Finger 1 (Thumb-like) -->
+                        <body name="finger1" pos="0.04 0 0.05">
+                            <joint name="f1_j1" type="hinge" axis="1 0 0" range="0 90"/>
+                            <geom name="f1_g1" type="capsule" size="0.01" fromto="0 0 0 0 0 0.04" rgba="0.2 0.8 0.2 1"/>
+                            <body name="f1_tip" pos="0 0 0.04">
+                                <joint name="f1_j2" type="hinge" axis="1 0 0" range="0 90"/>
+                                <geom name="f1_g2" type="capsule" size="0.01" fromto="0 0 0 0 0 0.03" rgba="0.2 0.8 0.2 1"/>
+                                <site name="f1_touch" pos="0 0 0.03" size="0.012" type="sphere" rgba="1 0 0 0.5"/>
+                            </body>
+                        </body>
+
+                        <!-- Finger 2 -->
+                        <body name="finger2" pos="-0.02 0 0.05">
+                            <joint name="f2_j1" type="hinge" axis="1 0 0" range="0 90"/>
+                            <geom name="f2_g1" type="capsule" size="0.01" fromto="0 0 0 0 0 0.04" rgba="0.2 0.8 0.2 1"/>
+                            <body name="f2_tip" pos="0 0 0.04">
+                                <joint name="f2_j2" type="hinge" axis="1 0 0" range="0 90"/>
+                                <geom name="f2_g2" type="capsule" size="0.01" fromto="0 0 0 0 0 0.03" rgba="0.2 0.8 0.2 1"/>
+                                <site name="f2_touch" pos="0 0 0.03" size="0.012" type="sphere" rgba="1 0 0 0.5"/>
+                            </body>
+                        </body>
+
+                        <!-- Finger 3 -->
+                        <body name="finger3" pos="-0.06 0 0.05">
+                            <joint name="f3_j1" type="hinge" axis="1 0 0" range="0 90"/>
+                            <geom name="f3_g1" type="capsule" size="0.01" fromto="0 0 0 0 0 0.04" rgba="0.2 0.8 0.2 1"/>
+                            <body name="f3_tip" pos="0 0 0.04">
+                                <joint name="f3_j2" type="hinge" axis="1 0 0" range="0 90"/>
+                                <geom name="f3_g2" type="capsule" size="0.01" fromto="0 0 0 0 0 0.03" rgba="0.2 0.8 0.2 1"/>
+                                <site name="f3_touch" pos="0 0 0.03" size="0.012" type="sphere" rgba="1 0 0 0.5"/>
+                            </body>
+                        </body>
                     </body>
                 </body>
             </body>
         </body>
     </worldbody>
 
+    <sensor>
+        <touch name="f1_touch_sensor" site="f1_touch"/>
+        <touch name="f2_touch_sensor" site="f2_touch"/>
+        <touch name="f3_touch_sensor" site="f3_touch"/>
+    </sensor>
+
     <actuator>
         <motor name="motor1" joint="joint1" gear="100"/>
         <motor name="motor2" joint="joint2" gear="100"/>
+        <motor name="f1_m1" joint="f1_j1" gear="10"/>
+        <motor name="f1_m2" joint="f1_j2" gear="10"/>
+        <motor name="f2_m1" joint="f2_j1" gear="10"/>
+        <motor name="f2_m2" joint="f2_j2" gear="10"/>
+        <motor name="f3_m1" joint="f3_j1" gear="10"/>
+        <motor name="f3_m2" joint="f3_j2" gear="10"/>
     </actuator>
 </mujoco>
