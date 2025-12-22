@@ -16,8 +16,6 @@ class NeuroINTMamba(nn.Module):
         num_dof: int
         d_model: int
         num_layers: int
-        states: Optional[List[Any]]
-        predictions: Optional[List[Optional[Tensor]]]
 
     def __init__(
         self,
@@ -197,8 +195,8 @@ class NeuroINTMamba(nn.Module):
             new_states.append(s)
             new_predictions.append(pred)
             
-        self.states: Optional[List[Any]] = new_states
-        self.predictions: Optional[List[Optional[Tensor]]] = new_predictions
+        self.states = new_states  # type: ignore
+        self.predictions = new_predictions  # type: ignore
         
         # 4. Motor Output
         cortical_cmd = self.motor_head(current_input)
@@ -219,5 +217,5 @@ class NeuroINTMamba(nn.Module):
         """
         # We keep them as None, the layers will initialize them on the first step
         # based on the input batch size.
-        self.states = [None] * len(self.layers)
-        self.predictions = [None] * len(self.layers)
+        self.states = [None] * len(self.layers)  # type: ignore
+        self.predictions = [None] * len(self.layers)  # type: ignore
